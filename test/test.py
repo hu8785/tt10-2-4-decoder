@@ -1,6 +1,3 @@
-# SPDX-FileCopyrightText: © 2024 Tiny Tapeout
-# SPDX-License-Identifier: Apache-2.0
-
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
@@ -8,14 +5,11 @@ from cocotb.triggers import ClockCycles
 
 @cocotb.test()
 async def test_project(dut):
-    dut._log.info("Start")
+    dut._log.info("Start 2-4 Decoder Test")
 
-    # Set the clock period to 10 us (100 KHz)
     clock = Clock(dut.clk, 10, units="us")
     cocotb.start_soon(clock.start())
 
-    # Reset
-    dut._log.info("Reset")
     dut.ena.value = 1
     dut.ui_in.value = 0
     dut.uio_in.value = 0
@@ -23,18 +17,28 @@ async def test_project(dut):
     await ClockCycles(dut.clk, 10)
     dut.rst_n.value = 1
 
-    dut._log.info("Test project behavior")
+    tests = [
+        # A, B, E -> D0, D1, D2, D3
+        ((0, 0, 0), (0, 1, 1, 1)),
+        ((0, 0, 1), (1, 1, 1, 1)),
+        ((0, 1, 0), (1, 0, 1, 1)),
+        ((0, 1, 1), (1, 1, 1, 1)),
+        ((1, 0, 0), (1, 1, 0, 1)),
+        ((1, 0, 1), (1, 1, 1, 1)),
+        ((1, 1, 0), (1, 1, 1, 0)),
+        ((1, 1, 1), (1, 1, 1, 1)),
+    ]
 
-    # Set the input values you want to test
-    dut.ui_in.value = 20
-    dut.uio_in.value = 30
+    for (A, B, E), (D0, D1, D2, D3) in tests:
+        dut.ui_in[0].value = A
+        dut.ui_in[1].value = B
+        dut.ui_in[2].value = E
 
-    # Wait for one clock cycle to see the output values
-    await ClockCycles(dut.clk, 1)
+        await ClockCycles(dut.clk, 5)
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 50
+        assert dut.uo_out[0].value == D0
+        assert dut.uo_out[1].value == D1
+        assert dut.uo_out[2].value == D2
+        assert dut.uo_out[3].value == D3
 
-    # Keep testing the module by changing the input values, waiting for
-    # one or more clock cycles, and asserting the expected output values.
+    dut._log.info("2-4 Decoder Test Completed")
